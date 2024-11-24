@@ -105,12 +105,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>A:\Taief\Project\OpenGL_Project\external\glfw\include;A:\Taief\Project\OpenGL_Project\external\glm\include;A:\Taief\Project\OpenGL_Project\external\glew\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>A:\Taief\Project\OpenGL_Project\external\glew\lib;A:\Taief\Project\OpenGL_Project\external\glfw\lib\lib-vc2022</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glew32.lib;glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;kernel32.lib;advapi32.lib;ws2_32.lib;comdlg32.lib;winmm.lib;ole32.lib;imm32.lib;dinput8.lib;dxguid.lib</AdditionalDependencies>
+      <AdditionalDependencies>glew32.lib;glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;kernel32.lib;advapi32.lib;ws2_32.lib;comdlg32.lib;winmm.lib;ole32.lib;imm32.lib;dinput8.lib;dxguid.lib;glu32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -131,16 +132,25 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\sources\hiking_data.cpp" />
+    <ClCompile Include="..\sources\camera.h" />
+    <ClCompile Include="..\sources\hiking_visualizer.cpp" />
     <ClCompile Include="..\sources\main.cpp" />
+    <ClCompile Include="..\sources\skybox.cpp" />
     <ClCompile Include="..\sources\terrain.cpp" />
     <ClCompile Include="..\sources\shader_utils.cpp" />
     <ClCompile Include="..\sources\tinyxml2.cpp" />
     <ClCompile Include="..\sources\window.cpp" />
+    <ClCompile Include="stb_image_impl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\stb_image.h" />
+    <ClInclude Include="..\sources\gl_utils.h" />
     <ClInclude Include="..\sources\hiking_data.h" />
+    <ClInclude Include="..\sources\hiking_visualizer.h" />
+    <ClInclude Include="..\sources\math_utils.h" />
+    <ClInclude Include="..\sources\shader.h" />
     <ClInclude Include="..\sources\shader_utils.h" />
+    <ClInclude Include="..\sources\skybox.h" />
     <ClInclude Include="..\sources\terrain.h" />
     <ClInclude Include="..\sources\tinyxml2.h" />
     <ClInclude Include="..\sources\window.h" />
@@ -149,6 +159,10 @@
     <Text Include="..\shaders\fragment_shader.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\shaders\skybox_fragment.glsl" />
+    <None Include="..\shaders\skybox_vertex.glsl" />
+    <None Include="..\shaders\trail_fragment.glsl" />
+    <None Include="..\shaders\trail_vertex.glsl" />
     <None Include="..\shaders\vertex_shader.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

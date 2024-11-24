@@ -1,25 +1,34 @@
 #include "terrain.h"
-#include "hiking_data.h"
 #include <iostream>
 #include <vector>
-#define STB_IMAGE_IMPLEMENTATION
+#include <limits>
 #include "../external/stb_image.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
-// Constructor
-Terrain::Terrain() : VBO(0), VAO(0), EBO(0), textureID(0), numIndices(0) {}
-
-// Destructor
-Terrain::~Terrain() {
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteTextures(1, &textureID);
+Terrain::Terrain()
+    : vertices(std::make_unique<std::vector<Vertex>>())
+    , indices(std::make_unique<std::vector<unsigned int>>())
+    , shader(std::make_unique<Shader>()) {
 }
 
-// Initialization function with hiking data
-bool Terrain::initialize(const std::string& heightMapPath, const std::string& texturePath, const std::vector<glm::vec3>& hikingData) {
+Terrain::~Terrain() {
+    cleanup();
+}
+
+bool Terrain::initialize(const std::string& heightMapPath,
+    const std::string& texturePath,
+    const std::vector<glm::vec3>& hikingData) {
+
+    // Load shaders
+    if (!shader->load(
+        "A:/Taief/Project/OpenGL_Project/shaders/vertex_shader.glsl",
+        "A:/Taief/Project/OpenGL_Project/shaders/fragment_shader.glsl")) {
+        std::cerr << "Failed to load terrain shaders" << std::endl;
+        return false;
+    }
+
     int width, height;
     std::vector<unsigned char> heightData;
 
@@ -27,6 +36,9 @@ bool Terrain::initialize(const std::string& heightMapPath, const std::string& te
         std::cerr << "Failed to load height map: " << heightMapPath << std::endl;
         return false;
     }
+
+    terrainWidth = width;
+    terrainHeight = height;
 
     generateTerrainVertices(heightData, width, height, hikingData);
     generateTerrainIndices(width, height);
@@ -38,15 +50,15 @@ bool Terrain::initialize(const std::string& heightMapPath, const std::string& te
     }
 
     setupBuffers();
-
     return true;
 }
 
-// Load height map
-bool Terrain::loadHeightMap(const std::string& path, int& width, int& height, std::vector<unsigned char>& heightData) {
+bool Terrain::loadHeightMap(const std::string& path, int& width, int& height,
+    std::vector<unsigned char>& heightData) {
     int nrChannels;
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 1);
     if (!data) {
+        std::cerr << "Failed to load heightmap: " << stbi_failure_reason() << std::endl;
         return false;
     }
 
@@ -55,99 +67,19 @@ bool Terrain::loadHeightMap(const std::string& path, int& width, int& height, st
     return true;
 }
 
-// Generate vertices for terrain using height data and hiking data
-void Terrain::generateTerrainVertices(const std::vector<unsigned char>& heightData, int width, int height, const std::vector<glm::vec3>& hikingData) {
-    const float HEIGHT_SCALE = 50.0f; // Increase to make elevation more visible
-    const int STEP_SIZE = 1;
-
-    vertices.clear();
-    for (int y = 0; y < height; y += STEP_SIZE) {
-        for (int x = 0; x < width; x += STEP_SIZE) {
-            unsigned char pixel = heightData[y * width + x];
-            float elevation = static_cast<float>(pixel) / 255.0f;
-
-            // Adjust elevation based on hiking data if nearby track points exist
-            float adjustedElevation = elevation * HEIGHT_SCALE;
-            for (const auto& point : hikingData) {
-                float distance = glm::distance(glm::vec2(x, y), glm::vec2(point.x, point.z));
-                if (distance < 10.0f) { // Influence radius of 10 units
-                    adjustedElevation = point.y; // Set elevation based on hiking data
-                }
-            }
-
-            Vertex vertex;
-            vertex.position = glm::vec3(static_cast<float>(x), adjustedElevation, static_cast<float>(y));
-            vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-            vertex.texCoords = glm::vec2(static_cast<float>(x) / width, static_cast<float>(y) / height);
-
-            vertices.push_back(vertex);
-        }
-    }
-}
-
-// Generate indices for terrain
-void Terrain::generateTerrainIndices(int width, int height) {
-    const int STEP_SIZE = 1;
-    int reducedWidth = width / STEP_SIZE;
-    int reducedHeight = height / STEP_SIZE;
-
-    indices.clear();
-    for (int y = 0; y < reducedHeight - 1; ++y) {
-        for (int x = 0; x < reducedWidth - 1; ++x) {
-            int topLeft = y * reducedWidth + x;
-            int topRight = topLeft + 1;
-            int bottomLeft = (y + 1) * reducedWidth + x;
-            int bottomRight = bottomLeft + 1;
-
-            // First triangle
-            indices.push_back(topLeft);
-            indices.push_back(bottomLeft);
-            indices.push_back(topRight);
-
-            // Second triangle
-            indices.push_back(topRight);
-            indices.push_back(bottomLeft);
-            indices.push_back(bottomRight);
-        }
-    }
-
-    numIndices = static_cast<unsigned int>(indices.size());
-}
-
-// Calculate normals
-void Terrain::calculateNormals() {
-    for (size_t i = 0; i < indices.size(); i += 3) {
-        unsigned int i0 = indices[i];
-        unsigned int i1 = indices[i + 1];
-        unsigned int i2 = indices[i + 2];
-
-        glm::vec3 v0 = vertices[i0].position;
-        glm::vec3 v1 = vertices[i1].position;
-        glm::vec3 v2 = vertices[i2].position;
-
-        glm::vec3 normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
-
-        vertices[i0].normal += normal;
-        vertices[i1].normal += normal;
-        vertices[i2].normal += normal;
-    }
-
-    for (auto& vertex : vertices) {
-        vertex.normal = glm::normalize(vertex.normal);
-    }
-}
-
-// Load texture
 bool Terrain::loadTexture(const std::string& path) {
     int texWidth, texHeight, texChannels;
     unsigned char* texData = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, 0);
     if (!texData) {
+        std::cerr << "Failed to load texture: " << stbi_failure_reason() << std::endl;
         return false;
     }
 
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texWidth, texHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
+    glGenTextures(1, &terrainTexture);
+    glBindTexture(GL_TEXTURE_2D, terrainTexture);
+
+    GLenum format = texChannels == 4 ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, texWidth, texHeight, 0, format, GL_UNSIGNED_BYTE, texData);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -159,7 +91,99 @@ bool Terrain::loadTexture(const std::string& path) {
     return true;
 }
 
-// Setup buffers
+void Terrain::generateTerrainVertices(const std::vector<unsigned char>& heightData,
+    int width, int height,
+    const std::vector<glm::vec3>& hikingData) {
+
+    // Increase scale factors significantly
+    const float HEIGHT_SCALE = 500.0f;    // Increase height scale
+    const float TERRAIN_SCALE = 50.0f;    // Increase horizontal scale
+
+    vertices->clear();
+    vertices->reserve(width * height);
+
+    minHeight = std::numeric_limits<float>::max();
+    maxHeight = std::numeric_limits<float>::lowest();
+
+    for (int z = 0; z < height; ++z) {
+        for (int x = 0; x < width; ++x) {
+            float xPos = (x - width / 2) * TERRAIN_SCALE;   // Center the terrain
+            float zPos = (z - height / 2) * TERRAIN_SCALE;  // Center the terrain
+
+            unsigned char pixel = heightData[z * width + x];
+            float elevation = static_cast<float>(pixel) / 255.0f * HEIGHT_SCALE;
+
+            // Adjust elevation based on hiking data
+            for (const auto& point : hikingData) {
+                float distance = glm::distance(glm::vec2(xPos, zPos), glm::vec2(point.x, point.z));
+                if (distance < 10.0f * TERRAIN_SCALE) {
+                    elevation = point.y * HEIGHT_SCALE;
+                }
+            }
+
+            minHeight = std::min(minHeight, elevation);
+            maxHeight = std::max(maxHeight, elevation);
+
+            Vertex vertex;
+            vertex.position = glm::vec3(xPos, elevation, zPos);
+            vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+            vertex.texCoords = glm::vec2(static_cast<float>(x) / width,
+                static_cast<float>(z) / height);
+            vertices->push_back(vertex);
+        }
+    }
+}
+
+void Terrain::generateTerrainIndices(int width, int height) {
+    indices->clear();
+    indices->reserve((width - 1) * (height - 1) * 6);
+
+    for (int z = 0; z < height - 1; ++z) {
+        for (int x = 0; x < width - 1; ++x) {
+            unsigned int topLeft = z * width + x;
+            unsigned int topRight = topLeft + 1;
+            unsigned int bottomLeft = (z + 1) * width + x;
+            unsigned int bottomRight = bottomLeft + 1;
+
+            indices->push_back(topLeft);
+            indices->push_back(bottomLeft);
+            indices->push_back(topRight);
+            indices->push_back(topRight);
+            indices->push_back(bottomLeft);
+            indices->push_back(bottomRight);
+        }
+    }
+
+    numIndices = static_cast<unsigned int>(indices->size());
+}
+
+void Terrain::calculateNormals() {
+    // Reset normals
+    for (auto& vertex : *vertices) {
+        vertex.normal = glm::vec3(0.0f);
+    }
+
+    // Calculate normals
+    for (size_t i = 0; i < indices->size(); i += 3) {
+        unsigned int i0 = (*indices)[i];
+        unsigned int i1 = (*indices)[i + 1];
+        unsigned int i2 = (*indices)[i + 2];
+
+        glm::vec3 v1 = (*vertices)[i1].position - (*vertices)[i0].position;
+        glm::vec3 v2 = (*vertices)[i2].position - (*vertices)[i0].position;
+        glm::vec3 normal = glm::normalize(glm::cross(v1, v2));
+
+        (*vertices)[i0].normal += normal;
+        (*vertices)[i1].normal += normal;
+        (*vertices)[i2].normal += normal;
+    }
+
+    // Normalize
+    for (auto& vertex : *vertices) {
+        vertex.normal = glm::normalize(vertex.normal);
+    }
+}
+
 void Terrain::setupBuffers() {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -168,31 +192,66 @@ void Terrain::setupBuffers() {
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices->size() * sizeof(Vertex), vertices->data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices->size() * sizeof(unsigned int), indices->data(), GL_STATIC_DRAW);
 
+    // Position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
     glEnableVertexAttribArray(0);
+
+    // Normal attribute
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glEnableVertexAttribArray(1);
+
+    // Texture coords attribute
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
 }
 
-// Draw function
-void Terrain::draw() {
+void Terrain::draw(const glm::mat4& view, const glm::mat4& projection) {
+    shader->use();
+    shader->setMat4("view", view);
+    shader->setMat4("projection", projection);
+
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    glBindTexture(GL_TEXTURE_2D, terrainTexture);
+    shader->setInt("terrainTexture", 0);
+
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
 
-// Debug output function
-void Terrain::debugOutput() {
-    std::cout << "Number of vertices: " << vertices.size() << std::endl;
-    std::cout << "Number of indices: " << indices.size() << std::endl;
+void Terrain::debugOutput() const {
+    std::cout << "\nTerrain Debug Information:" << std::endl;
+    std::cout << "Number of vertices: " << vertices->size() << std::endl;
+    std::cout << "Number of indices: " << indices->size() << std::endl;
+    std::cout << "Min height: " << minHeight << std::endl;
+    std::cout << "Max height: " << maxHeight << std::endl;
+    std::cout << "Terrain dimensions: " << terrainWidth << "x" << terrainHeight << std::endl;
+
+    glm::vec3 minBounds(std::numeric_limits<float>::max());
+    glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
+
+    for (const auto& vertex : *vertices) {
+        minBounds = glm::min(minBounds, vertex.position);
+        maxBounds = glm::max(maxBounds, vertex.position);
+    }
+
+    std::cout << "Terrain bounds:" << std::endl;
+    std::cout << "X: " << minBounds.x << " to " << maxBounds.x << std::endl;
+    std::cout << "Y: " << minBounds.y << " to " << maxBounds.y << std::endl;
+    std::cout << "Z: " << minBounds.z << " to " << maxBounds.z << std::endl;
+}
+
+void Terrain::cleanup() {
+    if (VAO) glDeleteVertexArrays(1, &VAO);
+    if (VBO) glDeleteBuffers(1, &VBO);
+    if (EBO) glDeleteBuffers(1, &EBO);
+    if (heightmapTexture) glDeleteTextures(1, &heightmapTexture);
+    if (terrainTexture) glDeleteTextures(1, &terrainTexture);
 }

@@ -1,10 +1,19 @@
-#ifndef HIKING_DATA_H
-#define HIKING_DATA_H
-
+// hiking_data.h
+#pragma once
 #include <vector>
-#include <glm/glm.hpp>
 #include <string>
+#include <glm/glm.hpp>
 
-bool loadHikingData(const std::string& gpxFilePath, std::vector<glm::vec3>& points);
+struct HikingPoint {
+    glm::vec3 position{ 0.0f };
+    float timestamp{ 0.0f };
+};
 
-#endif // HIKING_DATA_H
+bool loadHikingData(const std::string& filename, std::vector<glm::vec3>& hikingPoints);
+void smoothPath(std::vector<glm::vec3>& points);
+glm::vec3 gpsToLocalCoordinates(double lat, double lon, double ele);
+
+// Constants for coordinate transformation
+//constexpr double SCALE_FACTOR = 100.0;
+//constexpr double LAT_ORIGIN = 60.0;
+//constexpr double LON_ORIGIN = 10.0;

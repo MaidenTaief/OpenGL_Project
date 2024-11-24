@@ -1,61 +1,108 @@
+// hiking_data.cpp
 #include "hiking_data.h"
-#include "tinyxml2.h"
 #include <iostream>
-#include <glm/glm.hpp>
-#include <string>
+#include <limits>
+#include "tinyxml2.h"
 
-bool loadHikingData(const std::string& gpxFilePath, std::vector<glm::vec3>& points) {
-    tinyxml2::XMLDocument doc;
+// Globals to store min values
+double minLon = std::numeric_limits<double>::max();
+double minLat = std::numeric_limits<double>::max();
 
-    std::cerr << "Attempting to load GPX file: " << gpxFilePath << std::endl;
+glm::vec3 gpsToLocalCoordinates(double lat, double lon, double ele) {
+    // Adjust these scale factors to match your terrain scale
+    const float TERRAIN_SCALE = 100000.0f; // Adjust as needed
+    const float HEIGHT_SCALE = 1.0f;       // Adjust for elevation scaling
 
-    tinyxml2::XMLError loadResult = doc.LoadFile(gpxFilePath.c_str());
-    if (loadResult != tinyxml2::XML_SUCCESS) {
-        std::cerr << "Error loading GPX file: " << gpxFilePath << ", Error: " << doc.ErrorStr() << std::endl;
-        return false;
-    }
+    // Use minLon and minLat as origins
+    float x = static_cast<float>((lon - minLon) * TERRAIN_SCALE);
+    float z = static_cast<float>((lat - minLat) * TERRAIN_SCALE);
+    float y = static_cast<float>(ele * HEIGHT_SCALE);
 
-    tinyxml2::XMLElement* gpxElement = doc.FirstChildElement("gpx");
-    if (!gpxElement) {
-        std::cerr << "Invalid GPX file: No root element <gpx> found." << std::endl;
-        return false;
-    }
+    return glm::vec3(x, y, z);
+}
 
-    tinyxml2::XMLElement* trkElement = gpxElement->FirstChildElement("trk");
-    if (!trkElement) {
-        std::cerr << "Invalid GPX file: No <trk> element found." << std::endl;
-        return false;
-    }
 
-    tinyxml2::XMLElement* trksegElement = trkElement->FirstChildElement("trkseg");
-    if (!trksegElement) {
-        std::cerr << "Invalid GPX file: No <trkseg> element found." << std::endl;
-        return false;
-    }
-
-    tinyxml2::XMLElement* trkptElement = trksegElement->FirstChildElement("trkpt");
-    while (trkptElement) {
-        // Extract latitude and longitude attributes
-        double lat = trkptElement->DoubleAttribute("lat");
-        double lon = trkptElement->DoubleAttribute("lon");
-
-        // Extract elevation
-        tinyxml2::XMLElement* eleElement = trkptElement->FirstChildElement("ele");
-        if (!eleElement) {
-            std::cerr << "Warning: No <ele> element found for trkpt, skipping." << std::endl;
-            trkptElement = trkptElement->NextSiblingElement("trkpt");
-            continue;
+bool loadHikingData(const std::string& filename, std::vector<glm::vec3>& hikingPoints) {
+    try {
+        tinyxml2::XMLDocument doc;
+        if (doc.LoadFile(filename.c_str()) != tinyxml2::XML_SUCCESS) {
+            std::cerr << "Error loading GPX file: " << filename << std::endl;
+            return false;
         }
-        double ele = eleElement->DoubleText();
 
-        // Add the point (latitude, elevation, longitude)
-        points.emplace_back(static_cast<float>(lat), static_cast<float>(ele), static_cast<float>(lon));
+        // Get the root element (gpx)
+        tinyxml2::XMLElement* gpx = doc.FirstChildElement("gpx");
+        if (!gpx) {
+            std::cerr << "No GPX element found" << std::endl;
+            return false;
+        }
 
-        // Move to the next track point
-        trkptElement = trkptElement->NextSiblingElement("trkpt");
+        // Get the track (trk)
+        tinyxml2::XMLElement* trk = gpx->FirstChildElement("trk");
+        if (!trk) {
+            std::cerr << "No track element found" << std::endl;
+            return false;
+        }
+
+        // Get the track segment (trkseg)
+        tinyxml2::XMLElement* trkseg = trk->FirstChildElement("trkseg");
+        if (!trkseg) {
+            std::cerr << "No track segment found" << std::endl;
+            return false;
+        }
+
+        // First pass to find minLon and minLat
+        for (tinyxml2::XMLElement* trkpt = trkseg->FirstChildElement("trkpt");
+            trkpt != nullptr;
+            trkpt = trkpt->NextSiblingElement("trkpt")) {
+
+            double lat = trkpt->DoubleAttribute("lat");
+            double lon = trkpt->DoubleAttribute("lon");
+
+            if (lon < minLon) minLon = lon;
+            if (lat < minLat) minLat = lat;
+        }
+
+        // Clear existing points
+        hikingPoints.clear();
+
+        // Second pass to process points
+        for (tinyxml2::XMLElement* trkpt = trkseg->FirstChildElement("trkpt");
+            trkpt != nullptr;
+            trkpt = trkpt->NextSiblingElement("trkpt")) {
+
+            double lat = trkpt->DoubleAttribute("lat");
+            double lon = trkpt->DoubleAttribute("lon");
+
+            // Get elevation
+            tinyxml2::XMLElement* ele = trkpt->FirstChildElement("ele");
+            double elevation = 0.0;
+            if (ele) {
+                elevation = std::stod(ele->GetText());
+            }
+
+            // Convert GPS coordinates to local coordinate system
+            glm::vec3 point = gpsToLocalCoordinates(lat, lon, elevation);
+            hikingPoints.push_back(point);
+        }
+
+        // Validate that we loaded some points
+        if (hikingPoints.empty()) {
+            std::cerr << "No track points found in GPX file" << std::endl;
+            return false;
+        }
+
+        // Optional: Print out some points for debugging
+        for (size_t i = 0; i < std::min<size_t>(5, hikingPoints.size()); ++i) {
+            std::cout << "Point " << i << ": (" << hikingPoints[i].x << ", "
+                << hikingPoints[i].y << ", " << hikingPoints[i].z << ")" << std::endl;
+        }
+
+        std::cout << "Successfully loaded " << hikingPoints.size() << " hiking points" << std::endl;
+        return true;
     }
-
-    std::cerr << "Successfully loaded GPX data with " << points.size() << " track points." << std::endl;
-
-    return true;
+    catch (const std::exception& e) {
+        std::cerr << "Error processing GPX file: " << e.what() << std::endl;
+        return false;
+    }
 }

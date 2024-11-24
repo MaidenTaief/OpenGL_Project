@@ -33,6 +33,18 @@
     <ClCompile Include="..\sources\hiking_data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\sources\camera.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sources\hiking_visualizer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stb_image_impl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sources\skybox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\sources\terrain.h">
@@ -53,6 +65,21 @@
     <ClInclude Include="..\sources\hiking_data.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\sources\hiking_visualizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sources\gl_utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sources\math_utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sources\skybox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sources\shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\shaders\fragment_shader.glsl">
@@ -61,6 +88,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shaders\vertex_shader.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\shaders\trail_vertex.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\shaders\trail_fragment.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\shaders\skybox_fragment.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\shaders\skybox_vertex.glsl">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

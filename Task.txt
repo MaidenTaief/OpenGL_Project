@@ -1,0 +1,49 @@
+Build your own 3D Hiking simulator in Visual Studios using C++ and OpenGL.  
+
+Requirements:
+
+Visual Studio
+GLFW
+GLEW
+GLM
+Use the provided terrain data
+Use the provided hiking data
+Create shaders in separate files and load the files into your program
+Simulate the movement of the hiker in the terrain
+What:
+
+The Hiking Simulator should show a simulation of how the hiker moves, from start to finish, by drawing a line along the route. 
+
+It should be possible to load different areas, and different hikes in that area (start with the given data).
+Extra features:
+
+Add extra features to your simulator to personalize it. 
+
+Be creative!
+
+Some examples:
+
+Skybox
+Lights
+Textures
+Effects (Water animations, changing seasons, sun height based on time)
+Color change for the line based on speed, steepness, weather, etc.
+An animated character that moves along the line
+Attribution:
+
+Ideas, code and models can be taken from other places, however it is required to include credits to them in the report (references). And as always, everything you include should be written by you, and not by other generated sources!
+
+Report:
+
+A report has to be written for the assignment. The report should be formatted as a short paper, with maximum 8 pages, and should be delivered as a PDF file. The 8 pages includes tables, figures, appendices and everything in the report. 
+
+It is recommended that you use LaTex.
+
+The report should follow the IMRaD structure and should minimum include:
+
+An introduction of the assignment.
+A description of the submission. List the features of the program.
+A description of any extra features.
+A detailed explanation of how AI has been used in the project (e.g. to improve the language in the report, to help with parts of the programming, for brainstorming, etc.).
+Known problems with the code (explain how you could fix them if you had more time).
+References (books, papers, websites, etc.) that you found helpful for completing the assignment.
